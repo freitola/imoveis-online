@@ -1,18 +1,21 @@
-const express = require('express');  // Importa o Express
-const dotenv = require('dotenv');  // Importa o dotenv para carregar as variáveis de ambiente
-const bodyParser = require('body-parser');  // Importa o body-parser para garantir UTF-8
-const multer = require('multer');  // Importa o multer para upload de arquivos
+const express = require('express');
+const dotenv = require('dotenv');
+const bodyParser = require('body-parser');
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const authRoutes = require('./routes/authRoutes');  // Importa as rotas de autenticação
-const sequelize = require('./config/database');  // Importa a configuração do banco de dados
-const jwt = require('jsonwebtoken');  // Importa o JWT para verificar tokens
-const Property = require('./models/Property');  // Importa o modelo de Imóvel (Property)
-const { Op } = require('sequelize');  // Importa operadores do Sequelize (necessário para os filtros)
+const authRoutes = require('./routes/authRoutes');
+const sequelize = require('./config/database');
+const jwt = require('jsonwebtoken');
+const Property = require('./models/Property');
+const { Op } = require('sequelize');
 
-dotenv.config();  // Carrega as variáveis de ambiente do arquivo .env
+// Importa o modelo de Favoritos
+const Favorite = require('./models/Favorite');
 
-const app = express();  // Cria a instância do Express
+dotenv.config();
+
+const app = express();
 
 // Middleware para garantir que as requisições e respostas estejam com UTF-8
 app.use((req, res, next) => {
@@ -44,21 +47,21 @@ const upload = multer({ storage: storage });
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
-    return res.status(401).json({ message: 'Acesso negado: token não fornecido' });
+    return res.status(401).json({ message: 'Você precisa estar logado para acessar essa página.' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);  // Verifica e decodifica o token
-    req.user = decoded;  // Adiciona os dados do usuário decodificado à requisição
-    next();  // Passa para a próxima função
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expirado, por favor faça login novamente' });
+      return res.status(401).json({ message: 'Seu login expirou. Por favor, faça login novamente.' });
     }
     if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token inválido' });
+      return res.status(401).json({ message: 'Login inválido. Tente novamente.' });
     }
-    return res.status(401).json({ message: 'Falha na autenticação' });
+    return res.status(401).json({ message: 'Erro ao verificar sua sessão. Tente novamente.' });
   }
 }
 
@@ -66,7 +69,7 @@ function authMiddleware(req, res, next) {
 function checkRole(role) {
   return (req, res, next) => {
     if (req.user.role !== role) {
-      return res.status(403).json({ message: 'Acesso negado: você não tem permissão para acessar esta rota' });
+      return res.status(403).json({ message: 'Você não tem permissão para realizar essa ação.' });
     }
     next();
   };
@@ -75,7 +78,7 @@ function checkRole(role) {
 // Middleware para decodificar corretamente a URL
 app.use((req, res, next) => {
   if (req.query.location) {
-    req.query.location = decodeURIComponent(req.query.location);  // Decodifica a localização corretamente
+    req.query.location = decodeURIComponent(req.query.location);
   }
   next();
 });
@@ -99,25 +102,25 @@ app.post('/api/properties', authMiddleware, checkRole('corretor'), upload.single
 
     // Validação simples de dados
     if (!title || typeof title !== 'string') {
-      return res.status(400).json({ message: 'O título é obrigatório e deve ser uma string.' });
+      return res.status(400).json({ message: 'O título do imóvel é obrigatório.' });
     }
     if (!price || isNaN(price) || price <= 0) {
-      return res.status(400).json({ message: 'O preço é obrigatório e deve ser um número positivo.' });
+      return res.status(400).json({ message: 'Informe um preço válido para o imóvel.' });
     }
     if (!location || typeof location !== 'string') {
-      return res.status(400).json({ message: 'A localização é obrigatória e deve ser uma string.' });
+      return res.status(400).json({ message: 'A localização do imóvel é obrigatória.' });
     }
     if (bedrooms === undefined || isNaN(bedrooms) || bedrooms < 0) {
-      return res.status(400).json({ message: 'O número de quartos deve ser um número inteiro não negativo.' });
+      return res.status(400).json({ message: 'O número de quartos deve ser um valor válido.' });
     }
     if (bathrooms === undefined || isNaN(bathrooms) || bathrooms < 0) {
-      return res.status(400).json({ message: 'O número de banheiros deve ser um número inteiro não negativo.' });
+      return res.status(400).json({ message: 'O número de banheiros deve ser um valor válido.' });
     }
     if (size === undefined || isNaN(size) || size <= 0) {
-      return res.status(400).json({ message: 'O tamanho deve ser um número positivo.' });
+      return res.status(400).json({ message: 'Informe um tamanho válido para o imóvel.' });
     }
     if (!type || typeof type !== 'string') {
-      return res.status(400).json({ message: 'O tipo de imóvel é obrigatório e deve ser uma string.' });
+      return res.status(400).json({ message: 'O tipo de imóvel é obrigatório.' });
     }
 
     // Salva o caminho da imagem se ela foi enviada
@@ -132,60 +135,64 @@ app.post('/api/properties', authMiddleware, checkRole('corretor'), upload.single
       bathrooms,
       size,
       type,
-      image: imagePath,  // Salva o caminho da imagem
+      image: imagePath,  // Adiciona o caminho da imagem
       createdBy: req.user.id  // ID do corretor que criou o imóvel
     });
 
-    res.json({ message: 'Imóvel criado com sucesso', property: newProperty });
+    res.json({ message: 'Imóvel cadastrado com sucesso!', property: newProperty });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Erro ao criar imóvel' });
+    res.status(500).json({ message: 'Erro ao cadastrar o imóvel. Tente novamente mais tarde.' });
   }
 });
 
-// Rota para listar todos os imóveis com filtros e paginação
+// Rota para listar todos os imóveis com filtros avançados e ordenação
 app.get('/api/properties', authMiddleware, async (req, res) => {
   try {
-    // Captura os filtros da query string
-    const { minPrice, maxPrice, location, bedrooms, minSize, maxSize, type, bathrooms, page = 1, limit = 10 } = req.query;
+    const {
+      minPrice,
+      maxPrice,
+      location,
+      bedrooms,
+      minSize,
+      maxSize,
+      type,
+      bathrooms,
+      page = 1,
+      limit = 10,
+      orderBy = 'price',
+      orderDirection = 'ASC',
+      filterLogic = 'AND'
+    } = req.query;
 
-    const whereClause = {};  // Inicializa o objeto de cláusulas 'where'
+    const whereClause = {};
 
-    // Filtro de preço mínimo e máximo
     if (minPrice) whereClause.price = { [Op.gte]: parseFloat(minPrice) };
     if (maxPrice) whereClause.price = { ...whereClause.price, [Op.lte]: parseFloat(maxPrice) };
-
-    // Filtro de localização
     if (location) whereClause.location = { [Op.iLike]: `%${location}%` };
-
-    // Filtro de quartos
     if (bedrooms) whereClause.bedrooms = parseInt(bedrooms);
-
-    // Filtro de tamanho mínimo e máximo
     if (minSize) whereClause.size = { [Op.gte]: parseFloat(minSize) };
     if (maxSize) whereClause.size = { ...whereClause.size, [Op.lte]: parseFloat(maxSize) };
-
-    // Filtro de tipo de imóvel
     if (type) whereClause.type = { [Op.iLike]: `%${type}%` };
-
-    // Filtro de banheiros
     if (bathrooms) whereClause.bathrooms = parseInt(bathrooms);
 
-    // Calcular o offset para a paginação
+    const orderOptions = [[orderBy, orderDirection.toUpperCase()]];
+
+    const filterLogicOp = filterLogic.toUpperCase() === 'OR' ? Op.or : Op.and;
+
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    // Busca os imóveis no banco de dados com base nos filtros e adiciona a paginação
     const properties = await Property.findAll({
-      where: whereClause,
-      limit: parseInt(limit),  // Limita o número de resultados por página
-      offset: offset,          // Define o deslocamento (offset) para os resultados
+      where: { [filterLogicOp]: whereClause },
+      limit: parseInt(limit),
+      offset: offset,
+      order: orderOptions
     });
 
-    // Retorna a lista de imóveis filtrada com paginação
-    res.json({ message: 'Lista de imóveis', properties, page: parseInt(page), limit: parseInt(limit) });
+    res.json({ message: 'Imóveis listados com sucesso!', properties, page: parseInt(page), limit: parseInt(limit) });
   } catch (error) {
-    console.error(error);  // Exibe o erro no console para depuração
-    res.status(500).json({ message: 'Erro ao listar imóveis' });
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao listar os imóveis. Tente novamente mais tarde.' });
   }
 });
 
@@ -196,19 +203,17 @@ app.put('/api/properties/:id', authMiddleware, checkRole('corretor'), async (req
     const property = await Property.findByPk(id);
 
     if (!property) {
-      return res.status(404).json({ message: 'Imóvel não encontrado' });
+      return res.status(404).json({ message: 'Imóvel não encontrado.' });
     }
 
-    // Atualiza os dados do imóvel
     updatePropertyFields(property, req.body);
 
-    // Salva as mudanças
     await property.save();
 
-    res.json({ message: 'Imóvel atualizado com sucesso', property });
+    res.json({ message: 'Imóvel atualizado com sucesso!', property });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Erro ao atualizar imóvel' });
+    res.status(500).json({ message: 'Erro ao atualizar o imóvel. Tente novamente mais tarde.' });
   }
 });
 
@@ -217,25 +222,90 @@ app.delete('/api/properties/:id', authMiddleware, checkRole('corretor'), async (
   try {
     const { id } = req.params;
 
-    // Busca o imóvel pelo ID
     const property = await Property.findByPk(id);
 
     if (!property) {
-      return res.status(404).json({ message: 'Imóvel não encontrado' });
+      return res.status(404).json({ message: 'Imóvel não encontrado.' });
     }
 
-    // Exclui o imóvel
     await property.destroy();
 
-    res.json({ message: 'Imóvel excluído com sucesso' });
+    res.json({ message: 'Imóvel removido com sucesso!' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Erro ao excluir imóvel' });
+    res.status(500).json({ message: 'Erro ao remover o imóvel. Tente novamente mais tarde.' });
   }
 });
 
-// Rota para servir as imagens estáticas
-app.use('/uploads', express.static('uploads'));
+// Rota para adicionar um imóvel aos favoritos
+app.post('/api/favorites', authMiddleware, async (req, res) => {
+  try {
+    const { propertyId } = req.body;
+
+    const property = await Property.findByPk(propertyId);
+    if (!property) {
+      return res.status(404).json({ message: 'Imóvel não encontrado.' });
+    }
+
+    const existingFavorite = await Favorite.findOne({
+      where: { userId: req.user.id, propertyId }
+    });
+
+    if (existingFavorite) {
+      return res.status(400).json({ message: 'Este imóvel já está na sua lista de favoritos.' });
+    }
+
+    const favorite = await Favorite.create({
+      userId: req.user.id,
+      propertyId
+    });
+
+    res.json({ message: 'Imóvel adicionado aos favoritos!', favorite });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao adicionar o imóvel aos favoritos. Tente novamente mais tarde.' });
+  }
+});
+
+// Rota para listar todos os imóveis favoritos do usuário
+app.get('/api/favorites', authMiddleware, async (req, res) => {
+  try {
+    const favorites = await Favorite.findAll({
+      where: { userId: req.user.id },
+      include: [Property]  // Incluir os detalhes dos imóveis associados
+    });
+
+    res.json({ message: 'Seus imóveis favoritos foram carregados com sucesso!', favorites });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao carregar seus favoritos. Tente novamente mais tarde.' });
+  }
+});
+
+// Rota para remover um imóvel dos favoritos
+app.delete('/api/favorites/:propertyId', authMiddleware, async (req, res) => {
+  try {
+    const { propertyId } = req.params;
+
+    const favorite = await Favorite.findOne({
+      where: { userId: req.user.id, propertyId }
+    });
+
+    if (!favorite) {
+      return res.status(404).json({ message: 'Este imóvel não está na sua lista de favoritos.' });
+    }
+
+    await favorite.destroy();
+
+    res.json({ message: 'Imóvel removido dos favoritos!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao remover o imóvel dos favoritos. Tente novamente mais tarde.' });
+  }
+});
+
+// Rota de autenticação
+app.use('/api', authRoutes);
 
 // Conectar ao banco de dados e iniciar o servidor
 const PORT = process.env.PORT || 5001;

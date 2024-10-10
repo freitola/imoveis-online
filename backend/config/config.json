@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "vini",
+    "password": "sua_senha",
+    "database": "imoveis_online",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "vini",
+    "password": "sua_senha",
+    "database": "imoveis_online_test",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "vini",
+    "password": "sua_senha",
+    "database": "imoveis_online_prod",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  }
+}
