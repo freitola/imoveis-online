@@ -1,6 +1,9 @@
 const express = require('express');  // Importa o Express
 const dotenv = require('dotenv');  // Importa o dotenv para carregar as variáveis de ambiente
 const bodyParser = require('body-parser');  // Importa o body-parser para garantir UTF-8
+const multer = require('multer');  // Importa o multer para upload de arquivos
+const path = require('path');
+const fs = require('fs');
 const authRoutes = require('./routes/authRoutes');  // Importa as rotas de autenticação
 const sequelize = require('./config/database');  // Importa a configuração do banco de dados
 const jwt = require('jsonwebtoken');  // Importa o JWT para verificar tokens
@@ -20,6 +23,22 @@ app.use((req, res, next) => {
 // Middleware para parsing do corpo das requisições (JSON) e garantindo codificação UTF-8
 app.use(bodyParser.json({ type: 'application/json; charset=utf-8' }));
 app.use(express.json());
+
+// Configuração do multer para upload de imagens
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads/';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);  // Cria a pasta 'uploads' se não existir
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));  // Nomeia o arquivo com um timestamp único
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Middleware para verificar o token JWT
 function authMiddleware(req, res, next) {
@@ -61,9 +80,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rota de autenticação
-app.use('/api', authRoutes);
-
 // Função para atualizar campos de imóveis de forma genérica
 function updatePropertyFields(property, data) {
   property.title = data.title || property.title;
@@ -72,19 +88,51 @@ function updatePropertyFields(property, data) {
   property.size = data.size || property.size;
   property.bedrooms = data.bedrooms || property.bedrooms;
   property.bathrooms = data.bathrooms || property.bathrooms;
+  property.image = data.image || property.image;  // Adiciona o campo de imagem
   return property;
 }
 
 // Rota de criação de imóveis (apenas corretores)
-app.post('/api/properties', authMiddleware, checkRole('corretor'), async (req, res) => {
+app.post('/api/properties', authMiddleware, checkRole('corretor'), upload.single('image'), async (req, res) => {
   try {
-    const { title, price, location } = req.body;
+    const { title, price, location, bedrooms, bathrooms, size, type } = req.body;
+
+    // Validação simples de dados
+    if (!title || typeof title !== 'string') {
+      return res.status(400).json({ message: 'O título é obrigatório e deve ser uma string.' });
+    }
+    if (!price || isNaN(price) || price <= 0) {
+      return res.status(400).json({ message: 'O preço é obrigatório e deve ser um número positivo.' });
+    }
+    if (!location || typeof location !== 'string') {
+      return res.status(400).json({ message: 'A localização é obrigatória e deve ser uma string.' });
+    }
+    if (bedrooms === undefined || isNaN(bedrooms) || bedrooms < 0) {
+      return res.status(400).json({ message: 'O número de quartos deve ser um número inteiro não negativo.' });
+    }
+    if (bathrooms === undefined || isNaN(bathrooms) || bathrooms < 0) {
+      return res.status(400).json({ message: 'O número de banheiros deve ser um número inteiro não negativo.' });
+    }
+    if (size === undefined || isNaN(size) || size <= 0) {
+      return res.status(400).json({ message: 'O tamanho deve ser um número positivo.' });
+    }
+    if (!type || typeof type !== 'string') {
+      return res.status(400).json({ message: 'O tipo de imóvel é obrigatório e deve ser uma string.' });
+    }
+
+    // Salva o caminho da imagem se ela foi enviada
+    const imagePath = req.file ? req.file.path : null;
 
     // Salva o imóvel no banco de dados, com o corretor que o criou
     const newProperty = await Property.create({
       title,
       price,
       location,
+      bedrooms,
+      bathrooms,
+      size,
+      type,
+      image: imagePath,  // Salva o caminho da imagem
       createdBy: req.user.id  // ID do corretor que criou o imóvel
     });
 
@@ -95,16 +143,13 @@ app.post('/api/properties', authMiddleware, checkRole('corretor'), async (req, r
   }
 });
 
-// Rota para listar todos os imóveis com filtros de preço, localização, quartos, tamanho e tipo
+// Rota para listar todos os imóveis com filtros e paginação
 app.get('/api/properties', authMiddleware, async (req, res) => {
   try {
     // Captura os filtros da query string
-    const { minPrice, maxPrice, location, bedrooms, minSize, maxSize, type, bathrooms } = req.query;
+    const { minPrice, maxPrice, location, bedrooms, minSize, maxSize, type, bathrooms, page = 1, limit = 10 } = req.query;
 
     const whereClause = {};  // Inicializa o objeto de cláusulas 'where'
-
-    // Exibe o valor da localização para depuração
-    console.log("Valor de location recebido:", location);
 
     // Filtro de preço mínimo e máximo
     if (minPrice) whereClause.price = { [Op.gte]: parseFloat(minPrice) };
@@ -126,13 +171,18 @@ app.get('/api/properties', authMiddleware, async (req, res) => {
     // Filtro de banheiros
     if (bathrooms) whereClause.bathrooms = parseInt(bathrooms);
 
-    // Busca os imóveis no banco de dados com base nos filtros
+    // Calcular o offset para a paginação
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Busca os imóveis no banco de dados com base nos filtros e adiciona a paginação
     const properties = await Property.findAll({
-      where: whereClause
+      where: whereClause,
+      limit: parseInt(limit),  // Limita o número de resultados por página
+      offset: offset,          // Define o deslocamento (offset) para os resultados
     });
 
-    // Retorna a lista de imóveis filtrada
-    res.json({ message: 'Lista de imóveis', properties });
+    // Retorna a lista de imóveis filtrada com paginação
+    res.json({ message: 'Lista de imóveis', properties, page: parseInt(page), limit: parseInt(limit) });
   } catch (error) {
     console.error(error);  // Exibe o erro no console para depuração
     res.status(500).json({ message: 'Erro ao listar imóveis' });
@@ -183,6 +233,9 @@ app.delete('/api/properties/:id', authMiddleware, checkRole('corretor'), async (
     res.status(500).json({ message: 'Erro ao excluir imóvel' });
   }
 });
+
+// Rota para servir as imagens estáticas
+app.use('/uploads', express.static('uploads'));
 
 // Conectar ao banco de dados e iniciar o servidor
 const PORT = process.env.PORT || 5001;
