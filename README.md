@@ -44,8 +44,6 @@ Este projeto é uma API para gerenciamento de imóveis, incluindo funcionalidade
      }'
      ```
 
----
-
 ### Imóveis
 
 1. **Criar Imóvel**
@@ -80,8 +78,6 @@ Este projeto é uma API para gerenciamento de imóveis, incluindo funcionalidade
      -H "Authorization: Bearer $AUTH_TOKEN"
      ```
 
----
-
 ### Favoritos
 
 1. **Adicionar Imóvel aos Favoritos**
@@ -115,23 +111,6 @@ Este projeto é uma API para gerenciamento de imóveis, incluindo funcionalidade
      curl -X DELETE http://localhost:5001/api/favorites/2 \
      -H "Authorization: Bearer $AUTH_TOKEN"
      ```
-
----
-
-### Próximos Passos da Próxima Sprint
-
-1. **Aprimoramento de Performance**:
-   - Otimizar consultas ao banco de dados.
-   - Implementar cache de dados.
-
-2. **Gerenciamento de Logs**:
-   - Implementar logs detalhados de erros e performance.
-
-3. **Testes Automatizados**:
-   - Implementar testes unitários e de integração.
-
-4. **Melhorias de Segurança**:
-   - Proteção contra ataques (CSRF, SQL Injection).
 
 ---
 
