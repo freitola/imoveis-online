@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Adicione qualquer estilo global adicional aqui */
+html,
+body {
+  @apply bg-gray-50 text-gray-900;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Exemplo de customização */
+a {
+  @apply text-primary;
+}
+
+h1, h2, h3, h4 {
+  @apply font-bold;
+}
