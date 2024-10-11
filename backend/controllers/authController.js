@@ -1,48 +1,62 @@
+const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Joi = require('joi');
 
-// Esquema de validação com Joi
-const registerSchema = Joi.object({
-  name: Joi.string().min(3).required(),
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
-  role: Joi.string().valid('cliente', 'corretor').required(),
-});
+// Função de login
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
 
-// Registro de usuário
-exports.register = async (req, res) => {
   try {
-    const { error } = registerSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(401).json({ message: 'Credenciais inválidas.' });
     }
 
-    const { name, email, password, role } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Credenciais inválidas.' });
+    }
 
-    const user = await User.create({ name, email, password: hashedPassword, role });
-
-    res.json({ message: 'Usuário registrado com sucesso', user });
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token, role: user.role });
   } catch (error) {
-    console.error('Erro ao registrar usuário:', error);
-    if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ message: 'Email já registrado.' });
-    }
-    res.status(500).json({ message: 'Erro no servidor. Tente novamente mais tarde.' });
+    res.status(500).json({ message: 'Erro no servidor.' });
   }
 };
 
-// Login de usuário
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ where: { email } });
+// Função de registro
+exports.register = async (req, res) => {
+  const { name, email, password, role } = req.body;
 
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ message: 'Credenciais inválidas.' });
+  try {
+    let user = await User.findOne({ where: { email } });
+    if (user) {
+      return res.status(400).json({ message: 'Usuário já existe.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user = await User.create({ name, email, password: hashedPassword, role });
+
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token, role: user.role });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro no servidor.' });
   }
+};
 
-  const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  res.json({ message: 'Login bem-sucedido', token });
+// Função para deletar um usuário - Somente Admin
+exports.deleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado.' });
+    }
+
+    await user.destroy();
+    res.json({ message: 'Usuário removido com sucesso!' });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro no servidor ao tentar remover o usuário.' });
+  }
 };

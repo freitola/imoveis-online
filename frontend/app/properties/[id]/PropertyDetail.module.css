@@ -1,0 +1,116 @@
+/* Estilo global para afastar o conteúdo do topo */
+.page-content {
+    padding-top: 80px; /* Ajusta o valor conforme necessário */
+  }
+  
+/* Estilos gerais para a página de detalhes do imóvel */
+.propertyDetailsContainer {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .propertyTitle {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .propertyDetails {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  
+  .propertyImage {
+    flex-basis: 50%;
+    max-width: 400px;
+    height: 300px;
+    margin-right: 20px;
+  }
+  
+  .propertyImage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+  
+  .noImage {
+    width: 100%;
+    height: 100%;
+    background-color: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: #555;
+    border-radius: 8px;
+  }
+  
+  .propertyInfo {
+    flex-basis: 45%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  
+  .propertyInfo p {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    color: #444;
+  }
+  
+  .propertyInfo p strong {
+    color: #000;
+  }
+  
+  .whatsappButtonContainer {
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  .whatsappButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #25D366;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .whatsappButton:hover {
+    background-color: #22bc59;
+  }
+  
+  .whatsappIcon {
+    margin-right: 8px;
+    font-size: 16px;
+  }
+  
+  .whatsappButton a {
+    color: white;
+    text-decoration: none;
+    font-size: 14px;
+  }
+  
+  /* Remover animação de cards */
+  .property-card {
+    transform: none;
+    transition: none;
+  }
+  
+  .property-card:hover {
+    transform: none;
+    box-shadow: none;
+  }

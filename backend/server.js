@@ -1,22 +1,32 @@
+// server.js
 const express = require('express');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
+const corretorRoutes = require('./routes/corretorRoutes');
+const propertyRoutes = require('./routes/propertyRoutes');
 const sequelize = require('./config/database');
 const jwt = require('jsonwebtoken');
 const Property = require('./models/Property');
 const Favorite = require('./models/Favorite');
 const { Op } = require('sequelize');
-const errorHandler = require('./middleware/errorHandler'); // Middleware para tratamento de erros
-const logger = require('./utils/logger'); // Logger
+const errorHandler = require('./middleware/errorHandler');
+const logger = require('./utils/logger');
 
-// Configurações
+// Carregar variáveis de ambiente
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// Configurar CORS para permitir requisições do frontend
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+}));
 
 // Middlewares
 app.use(setContentTypeUTF8);
@@ -26,12 +36,13 @@ app.use(express.json());
 // Configuração do multer para upload de imagens
 const upload = multer({ storage: configureMulterStorage() });
 
-// Funções auxiliares
+// Função para configurar o cabeçalho UTF-8
 function setContentTypeUTF8(req, res, next) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   next();
 }
 
+// Função para configurar o armazenamento do multer
 function configureMulterStorage() {
   return multer.diskStorage({
     destination: function (req, file, cb) {
@@ -47,6 +58,7 @@ function configureMulterStorage() {
   });
 }
 
+// Middleware de autenticação JWT
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
@@ -62,6 +74,7 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// Tratamento de erro do JWT
 function handleJWTError(error, res) {
   if (error.name === 'TokenExpiredError') {
     return res.status(401).json({ message: 'Seu login expirou. Por favor, faça login novamente.' });
@@ -69,6 +82,7 @@ function handleJWTError(error, res) {
   return res.status(401).json({ message: 'Erro ao verificar sua sessão. Tente novamente.' });
 }
 
+// Middleware para verificar o papel do usuário
 function checkRole(role) {
   return (req, res, next) => {
     if (req.user.role !== role) {
@@ -78,6 +92,7 @@ function checkRole(role) {
   };
 }
 
+// Função para atualizar campos da propriedade
 function updatePropertyFields(property, data) {
   property.title = data.title || property.title;
   property.price = data.price || property.price;
@@ -89,7 +104,7 @@ function updatePropertyFields(property, data) {
   return property;
 }
 
-// Rotas de Imóveis
+// Rotas de propriedades
 app.post('/api/properties', authMiddleware, checkRole('corretor'), upload.single('image'), async (req, res) => {
   try {
     const newProperty = await createNewProperty(req);
@@ -118,10 +133,10 @@ function validatePropertyData({ title, price, location, bedrooms, bathrooms, siz
   if (bedrooms === undefined || isNaN(bedrooms) || bedrooms < 0) throw new Error('Número de quartos inválido.');
   if (bathrooms === undefined || isNaN(bathrooms) || bathrooms < 0) throw new Error('Número de banheiros inválido.');
   if (size === undefined || isNaN(size) || size <= 0) throw new Error('Informe um tamanho válido.');
-  if (!type || typeof type !== 'string') throw new Error('O tipo de imóvel é obrigatório.');
 }
 
-app.get('/api/properties', authMiddleware, async (req, res) => {
+// Outras rotas de propriedades (listar, atualizar, deletar)
+app.get('/api/properties', async (req, res) => {
   try {
     const properties = await listProperties(req.query);
     res.json({ message: 'Imóveis listados com sucesso!', properties });
@@ -131,6 +146,7 @@ app.get('/api/properties', authMiddleware, async (req, res) => {
   }
 });
 
+// Função para listar propriedades
 async function listProperties(query) {
   const {
     minPrice, maxPrice, location, bedrooms, minSize, maxSize, type, bathrooms,
@@ -162,6 +178,7 @@ function buildWhereClause({ minPrice, maxPrice, location, bedrooms, minSize, max
   return whereClause;
 }
 
+// Rota para atualizar propriedades
 app.put('/api/properties/:id', authMiddleware, checkRole('corretor'), async (req, res) => {
   try {
     const property = await Property.findByPk(req.params.id);
@@ -176,6 +193,7 @@ app.put('/api/properties/:id', authMiddleware, checkRole('corretor'), async (req
   }
 });
 
+// Rota para deletar propriedades
 app.delete('/api/properties/:id', authMiddleware, checkRole('corretor'), async (req, res) => {
   try {
     const property = await Property.findByPk(req.params.id);
@@ -189,58 +207,13 @@ app.delete('/api/properties/:id', authMiddleware, checkRole('corretor'), async (
   }
 });
 
-// Rotas de Favoritos
-app.post('/api/favorites', authMiddleware, async (req, res) => {
-  try {
-    const favorite = await addFavorite(req);
-    res.json({ message: 'Imóvel adicionado aos favoritos!', favorite });
-  } catch (error) {
-    logger.error('Erro ao adicionar o imóvel aos favoritos: ' + error.message);
-    handleError(error, res, 'Erro ao adicionar o imóvel aos favoritos.');
-  }
-});
+// Usar rotas de autenticação e corretor
+app.use('/api/auth', authRoutes);
+app.use('/api/corretores', corretorRoutes);
+app.use('/api/properties', propertyRoutes);
 
-async function addFavorite(req) {
-  const property = await Property.findByPk(req.body.propertyId);
-  if (!property) throw new Error('Imóvel não encontrado.');
-
-  const existingFavorite = await Favorite.findOne({ where: { userId: req.user.id, propertyId: req.body.propertyId } });
-  if (existingFavorite) throw new Error('Este imóvel já está na sua lista de favoritos.');
-
-  return await Favorite.create({ userId: req.user.id, propertyId: req.body.propertyId });
-}
-
-app.get('/api/favorites', authMiddleware, async (req, res) => {
-  try {
-    const favorites = await Favorite.findAll({
-      where: { userId: req.user.id },
-      include: [Property]
-    });
-    res.json({ message: 'Seus imóveis favoritos foram carregados com sucesso!', favorites });
-  } catch (error) {
-    logger.error('Erro ao carregar os favoritos: ' + error.message);
-    handleError(error, res, 'Erro ao carregar seus favoritos.');
-  }
-});
-
-app.delete('/api/favorites/:propertyId', authMiddleware, async (req, res) => {
-  try {
-    const favorite = await Favorite.findOne({ where: { userId: req.user.id, propertyId: req.params.propertyId } });
-    if (!favorite) return res.status(404).json({ message: 'Este imóvel não está na sua lista de favoritos.' });
-
-    await favorite.destroy();
-    res.json({ message: 'Imóvel removido dos favoritos!' });
-  } catch (error) {
-    logger.error('Erro ao remover o imóvel dos favoritos: ' + error.message);
-    handleError(error, res, 'Erro ao remover o imóvel dos favoritos.');
-  }
-});
-
-// Rota de autenticação
-app.use('/api', authRoutes);
-
-// Inicialização do Servidor
-sequelize.sync()
+// Inicializar o servidor
+sequelize.sync({ alter: true })
   .then(() => {
     app.listen(PORT, () => {
       logger.info(`Servidor rodando na porta ${PORT}`);
@@ -250,12 +223,12 @@ sequelize.sync()
     logger.error('Erro ao conectar ao banco de dados: ' + err.message);
   });
 
+// Middleware para tratar erros
+app.use(errorHandler);
+
 function handleError(error, res, message) {
   console.error(error);
   res.status(500).json({ message });
 }
-
-// Middleware para tratamento de erros
-app.use(errorHandler);
 
 module.exports = app;

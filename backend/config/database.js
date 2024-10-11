@@ -1,8 +1,11 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
 
-// Verifique se a URL do banco de dados está sendo carregada corretamente
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
+// Verifica se a URL do banco de dados foi carregada corretamente
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL não foi definida. Verifique seu arquivo .env.');
+  process.exit(1); // Finaliza o processo se a URL do banco de dados não estiver definida
+}
 
 // Inicializa o Sequelize usando a URL de conexão do PostgreSQL
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
@@ -17,8 +20,10 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     console.log('Conexão com o banco de dados bem-sucedida!');
   } catch (error) {
     // Em caso de erro, exibe a mensagem de erro
-    console.error('Erro ao conectar ao banco de dados:', error);
+    console.error('Erro ao conectar ao banco de dados:', error.message);
+    process.exit(1); // Finaliza o processo caso a conexão falhe
   }
 })();
 
+// Exporta o objeto Sequelize para ser usado em outros arquivos da aplicação
 module.exports = sequelize;

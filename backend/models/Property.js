@@ -1,42 +1,38 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Definindo o modelo de Property (Imóvel)
 const Property = sequelize.define('Property', {
   title: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
   },
   price: {
     type: DataTypes.FLOAT,
-    allowNull: false
+    allowNull: false,
   },
   location: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
   },
   bedrooms: {
-    type: DataTypes.INTEGER,  // Número de quartos
-    allowNull: true
+    type: DataTypes.INTEGER,
+    allowNull: false,
   },
   bathrooms: {
-    type: DataTypes.INTEGER,  // Número de banheiros
-    allowNull: true
+    type: DataTypes.INTEGER,
+    allowNull: false,
   },
   size: {
-    type: DataTypes.FLOAT,  // Tamanho em metros quadrados
-    allowNull: true
+    type: DataTypes.FLOAT,
+    allowNull: false,
   },
-  type: {
-    type: DataTypes.STRING,  // Tipo de imóvel (apartamento, casa, etc.)
-    allowNull: true
+  image: {
+    type: DataTypes.STRING,
   },
   createdBy: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
   }
-}, {
-  timestamps: true
 });
 
 module.exports = Property;
