@@ -1,0 +1,36 @@
+/* CorretorAdmin.module.css */
+.container {
+    padding: 20px;
+  }
+  
+  .corretorList {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .corretorItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .createButton, .editButton, .deleteButton {
+    padding: 10px;
+    margin: 5px;
+  }
+  
+  .createButton {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .editButton {
+    background-color: #ffc107;
+  }
+  
+  .deleteButton {
+    background-color: #dc3545;
+    color: white;
+  }

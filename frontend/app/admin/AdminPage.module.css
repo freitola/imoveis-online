@@ -1,0 +1,130 @@
+/* Container dos imóveis */
+.propertyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* Alinha os itens no topo */
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.propertyItem:hover {
+  transform: scale(1.02);
+}
+
+/* Estilizando a imagem */
+.propertyImage {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  background-color: #ccc;
+  border-radius: 5px;
+}
+
+/* Alinhando detalhes da propriedade */
+.propertyDetails {
+  display: flex;
+  flex-direction: column;
+  margin-left: 20px;
+  flex: 1;
+}
+
+.propertyTitle {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+  max-width: 300px; /* Garantindo limite de largura */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.propertyDescription {
+  font-size: 1rem;
+  color: #666;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+}
+
+.propertyDescription span {
+  margin-bottom: 5px; /* Ajusta espaçamento entre as linhas da descrição */
+}
+
+/* Estilizando os botões de ação */
+.propertyActions {
+  display: flex;
+  flex-direction: column;
+}
+
+.editButton, .deleteButton {
+  padding: 10px 15px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  width: 120px;
+  text-align: center;
+}
+
+.editButton {
+  background-color: #ffc107;
+  color: #fff;
+}
+
+.editButton:hover {
+  background-color: #e0a800;
+}
+
+.deleteButton {
+  background-color: #dc3545;
+  color: white;
+}
+
+.deleteButton:hover {
+  background-color: #c82333;
+}
+
+/* Filtros */
+.filters {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.filters input, .filters select {
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  width: 100%;
+}
+
+.filters input::placeholder {
+  color: #999;
+}
+
+/* Estilizando o botão de Ordenar */
+.sortButton {
+  background-color: #0070f3;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+}
+
+.sortButton:hover {
+  background-color: #005bb5;
+}
+
+/* Ajustar a largura do botão de ordenar */
+.sortButton select {
+  width: 100%;
+}
